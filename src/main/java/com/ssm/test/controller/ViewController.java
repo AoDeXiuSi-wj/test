@@ -19,7 +19,7 @@ public class ViewController {
 
     private Logger logger = Logger.getLogger(String.valueOf(ViewController.class));
 
-    @Resource(name = "UserService")
+    @Resource(name = "PUserService")
     private PUserSerivce pUserService;
 
     @RequestMapping("/index")

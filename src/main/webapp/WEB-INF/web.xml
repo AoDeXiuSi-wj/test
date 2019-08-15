@@ -26,94 +26,93 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
 
-  <!-- Servlet Filters ================================================ -->
+  <display-name>Manager</display-name>
 
-  <!--
-    - Declare a filter for multipart MIME handling
-    -->
-  <filter>
-    <description>Multipart MIME handling filter for Cocoon</description>
-    <display-name>Cocoon multipart filter</display-name>
-    <filter-name>CocoonMultipartFilter</filter-name>
-    <filter-class>org.apache.cocoon.servlet.multipart.MultipartFilter</filter-class>
-  </filter>
+  <context-param>
+    <description>配置Spring配置文件路径</description>
+    <param-name>contextConfigLocation</param-name>
+    <!-- 如果是监听多个文件，可用‘，’隔开 -->
+    <param-value>classpath:spring/spring-*.xml</param-value>
+  </context-param>
 
-  <!--
-    - Declare a filter for debugging incoming request
-    -->
-  <filter>
-    <description>Log debug information about each request</description>
-    <display-name>Cocoon debug filter</display-name>
-    <filter-name>CocoonDebugFilter</filter-name>
-    <filter-class>org.apache.cocoon.servlet.DebugFilter</filter-class>
-  </filter>
-
-  <!-- Filter mappings ================================================ -->
-
-  <!--
-    - Use the Cocoon multipart filter together with the Cocoon demo webapp
-    -->
-  <filter-mapping>
-    <filter-name>CocoonMultipartFilter</filter-name>
-    <servlet-name>Cocoon</servlet-name>
-  </filter-mapping>
-  <filter-mapping>
-    <filter-name>CocoonMultipartFilter</filter-name>
-    <servlet-name>DispatcherServlet</servlet-name>
-  </filter-mapping>
-
-  <!--
-    - Use the Cocoon debug filter together with the Cocoon demo webapp
-  <filter-mapping>
-    <filter-name>CocoonDebugFilter</filter-name>
-    <servlet-name>Cocoon</servlet-name>
-  </filter-mapping>
-    -->
-
-  <!-- Servlet Context Listener ======================================= -->
-
-  <!--
-    - Declare Spring context listener which sets up the Spring Application Context
-    - containing all Cocoon components (and user defined beans as well).
-    -->
   <listener>
+    <description>配置Spring上下文监听器</description>
     <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
   </listener>
 
-  <!--
-    - Declare Spring request listener which sets up the required RequestAttributes
-    - to support Springs and Cocoon custom bean scopes like the request scope or the
-    - session scope.
-    -->
+
   <listener>
+    <description>Introspector缓存清除监听器</description>
+    <listener-class>org.springframework.web.util.IntrospectorCleanupListener</listener-class>
+  </listener>
+  <listener>
+    <description>request监听器</description>
     <listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
   </listener>
 
-  <!-- Servlet Configuration ========================================== -->
+  <!-- 配置Spring字符编码过滤器 -->
+  <filter>
+    <filter-name>encodingFilter</filter-name>
+    <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+    <init-param>
+      <param-name>encoding</param-name>
+      <param-value>UTF-8</param-value>
+    </init-param>
+    <init-param>
+      <param-name>forceEncoding</param-name>
+      <param-value>true</param-value>
+    </init-param>
+  </filter>
+  <filter-mapping>
+    <filter-name>encodingFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
 
-  <!--
-    - Servlet that dispatches requests to the Spring managed block servlets
-    -->
+  <!--log4j配置文件加载-->
+  <context-param>
+    <param-name>log4jConfigLocation</param-name>
+    <param-value>classpath:log4j.properties</param-value>
+  </context-param>
+  <!--启动一个watchdog线程每1800秒扫描一下log4j配置文件的变化-->
+  <context-param>
+    <param-name>log4jRefreshInterval</param-name>
+    <param-value>1800000</param-value>
+  </context-param>
+  <!--spring log4j监听器-->
+  <listener>
+    <listener-class>org.springframework.web.util.Log4jConfigListener</listener-class>
+  </listener>
+
+  <!-- Spring MVC 核心控制器 DispatcherServlet 配置开始 -->
   <servlet>
-    <description>Cocoon blocks dispatcher</description>
-    <display-name>DispatcherServlet</display-name>
-    <servlet-name>DispatcherServlet</servlet-name>
-    <servlet-class>org.apache.cocoon.servletservice.DispatcherServlet</servlet-class>
+    <servlet-name>SpringMVC</servlet-name>
+    <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+    <!-- 可以通过contextConfigLocation来自定义SpringMVC配置文件的位置，如不指定，则默认在WEB-INF目录下，名称为[<servlet-name>]-servlet.xml，
+         此时文件名必须为[<servlet-name>]-servlet.xml，否则会出错-->
+    <!--以下init-param是自定义SpringMVC的配置文件的位置 -->
+    <init-param>
+      <param-name>contextConfigLocation</param-name>
+      <param-value>classpath:spring/spring-mvc.xml</param-value>
+    </init-param>
     <load-on-startup>1</load-on-startup>
   </servlet>
-
-  <!-- URL space mappings ============================================= -->
-
-  <!--
-    - Cocoon handles all the URL space assigned to the webapp using its sitemap.
-    - It is recommended to leave it unchanged. Under some circumstances though
-    - (like integration with proprietary webapps or servlets) you might have
-    - to change this parameter.
-    -->
+  <!-- 拦截设置 -->
   <servlet-mapping>
-    <servlet-name>DispatcherServlet</servlet-name>
-    <url-pattern>/*</url-pattern>
+    <servlet-name>SpringMVC</servlet-name>
+    <!-- 此处可以可以配置成*.do，对应struts的后缀习惯 -->
+    <url-pattern>/</url-pattern>
+  </servlet-mapping>
+  <!-- Spring MVC 核心配置结束 -->
+
+  <!-- 激活Tomcat的defaultServlet来处理静态文件 -->
+  <servlet-mapping>
+    <servlet-name>default</servlet-name>
+    <url-pattern>/static/*</url-pattern>
   </servlet-mapping>
 
+  <!-- session 时间 -->
+  <session-config>
+    <session-timeout>30</session-timeout>
+  </session-config>
+
 </web-app>
-        
